@@ -1,1 +1,1 @@
-# tile-GAN
+# Tile GAN
