@@ -42,7 +42,7 @@ def make_image_grid(images, ncols, cell_size=1.5, un_normalize=False, set_idx_ti
 
     plt.subplots_adjust(wspace=wspace, hspace=hspace)
     if title is not None:
-        plt.subptitle(title)
+        plt.suptitle(title)
     if save_as is not None:
         plt.savefig(save_as, dpi=300, bbox="tight_inches")
 

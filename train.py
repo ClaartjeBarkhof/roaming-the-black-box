@@ -6,8 +6,10 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import torchvision.utils as vutils
+import matplotlib.pyplot as plt
 
 from GAN import Generator, Discriminator
+
 
 # Custom weights initialization called on netG and netD
 def weights_init(m):
@@ -18,34 +20,23 @@ def weights_init(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
+
 # Train loop
-def train(train_dataloader, lr, nz, beta1=0.5, ngpu=1, device="cuda:0", print_model=False):
-    # Create the generator
-    netG = Generator(ngpu).to(device)
+def train(train_dataloader, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1, ndf=64, ngf=64, nc=3, image_dim=64,
+          device="cuda:0", print_model=False, continue_state_dict_path=None, save_state_dict_path=None):
 
-    # Handle multi-gpu if desired
-    if (device.type == 'cuda') and (ngpu > 1):
-        netG = nn.DataParallel(netG, list(range(ngpu)))
-
-    # Apply the weights_init function to randomly initialize all weights
-    #  to mean=0, stdev=0.02.
-    netG.apply(weights_init)
-
-    # Create the Discriminator
-    netD = Discriminator(ngpu).to(device)
-
-    # Handle multi-gpu if desired
-    if (device.type == 'cuda') and (ngpu > 1):
-        netD = nn.DataParallel(netD, list(range(ngpu)))
-
-    # Apply the weights_init function to randomly initialize all weights
-    #  to mean=0, stdev=0.2.
-    netD.apply(weights_init)
-
-    # Print the model
-    if print_model:
-        print(netD)
-        print(netG)
+    if continue_state_dict_path is None:
+        checkpoint = torch.load(continue_state_dict_path)
+        hp = checkpoint["hp"]
+        nz = hp["nz"]
+        lr = hp["lr"]
+        beta1 = hp["beta1"]
+        ndf = hp["ndf"]
+        ngf = hp["ngf"]
+        nc = hp["nc"]
+        image_dim = hp["image_dim"]
+    else:
+        hp = dict(nz=nz, lr=lr, beta1=beta1, ndf=ndf, ngf=ngf, nc=nc, image_dim=image_dim)
 
     # Initialize BCELoss function
     criterion = nn.BCELoss()
@@ -58,29 +49,65 @@ def train(train_dataloader, lr, nz, beta1=0.5, ngpu=1, device="cuda:0", print_mo
     real_label = 1.
     fake_label = 0.
 
+    # Create the generator
+    netG = Generator(ngpu=ngpu, ngf=ngf, nz=nz, image_dim=image_dim, nc=nc).to(device)
+
+    # Create the Discriminator
+    netD = Discriminator(ngpu=ngpu, ndf=ndf, nc=nc, image_dim=image_dim).to(device)
+
+    # Print the model
+    if print_model:
+        print(netD)
+        print(netG)
+
     # Setup Adam optimizers for both G and D
     optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(beta1, 0.999))
     optimizerG = optim.Adam(netG.parameters(), lr=lr, betas=(beta1, 0.999))
 
-    # Training Loop
+    if continue_state_dict_path is None:
+        # Apply the weights_init function to randomly initialize all weights
+        #  to mean=0, stdev=0.02.
+        netG.apply(weights_init)
 
-    # Lists to keep track of progress
-    img_list = []
-    G_losses = []
-    D_losses = []
-    iters = 0
+        # Apply the weights_init function to randomly initialize all weights
+        #  to mean=0, stdev=0.2.
+        netD.apply(weights_init)
 
-    num_epochs = 200
+        # Lists to keep track of progress
+        img_list = []
+        G_losses = []
+        D_losses = []
+        iters = 0
+        start_epoch = 0
 
-    # just to be sure, in case you have been running things below in between
+    else:
+        checkpoint = torch.load(continue_state_dict_path)
+        G_losses = checkpoint["G_losses"]
+        D_losses = checkpoint["D_losses"]
+        img_list = checkpoint["img_list"]
+
+        iters = checkpoint["iters"]
+        start_epoch = checkpoint["epoch"]
+
+        netG.load_state_dict(state_dict=checkpoint["netG_state_dict"])
+        netD.load_state_dict(state_dict=checkpoint["netD_state_dict"])
+        optimizerG.load_state_dict(state_dict=checkpoint["optimizerG_state_dict"])
+        optimizerD.load_state_dict(state_dict=checkpoint["optimizerD_state_dict"])
+
+    # Just to be sure
     netG.train()
     for param in netG.parameters():
         param.requires_grad = True
 
-    print("Starting Training Loop...")
+    netD.train()
+    for param in netD.parameters():
+        param.requires_grad = True
+
+    print("Starting (or resuming) Training Loop...")
     # For each epoch
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs+start_epoch):
         # For each batch in the dataloader
+        i = 0
         for i, data in enumerate(train_dataloader, 0):
 
             ############################
@@ -152,8 +179,25 @@ def train(train_dataloader, lr, nz, beta1=0.5, ngpu=1, device="cuda:0", print_mo
             if (iters % 500 == 0) or ((epoch == num_epochs - 1) and (i == len(train_dataloader) - 1)):
                 with torch.no_grad():
                     fake = netG(fixed_noise).detach().cpu()
-                img_list.append(vutils.make_grid(fake, padding=2))  # , normalize=True
+                img = vutils.make_grid(fake, padding=2)
+                img_list.append(img)  # , normalize=True
+
+                # Plot
+                img = img.permute(1, 2, 0)
+                # img = (img + 1.0) / 2.0
+                plt.imshow(img, vmin=0.0, vmax=1.0)
+                plt.title(f"Epoch {epoch} | iter {i} | total iter {iters} ")
+                plt.axis("off")
+                plt.show()
 
             iters += 1
 
-    return dict(G_losses=G_losses, D_losses=D_losses, epoch=epoch, step=i, iters=iters)
+        if save_state_dict_path is not None:
+            print(f"End of epoch {epoch} - Saving state and info in {save_state_dict_path}")
+            save_dict = dict(G_losses=G_losses, D_losses=D_losses, hp=hp,
+                             epoch=epoch, step=i, iters=iters,
+                             netG_state_dict=netG.state_dict(),
+                             netD_state_dict=netD.state_dict(),
+                             optimizerG_state_dict=optimizerG.state_dict(),
+                             optimizerD_state_dict=optimizerD.state_dict())
+            torch.save(save_dict, save_state_dict_path)

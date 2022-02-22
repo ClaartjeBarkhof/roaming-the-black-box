@@ -4,10 +4,10 @@ import torch.nn as nn
 
 # Generator Code
 class Generator(nn.Module):
-    def __init__(self, ngpu, ngf, nz, image_size, nc):
+    def __init__(self, ngpu, ngf, nz, image_dim, nc):
         super(Generator, self).__init__()
         self.ngpu = ngpu
-        if image_size == 64:
+        if image_dim == 64:
           self.main = nn.Sequential(
               # input is Z, going into a convolution
               nn.ConvTranspose2d( nz, ngf * 8, 4, 1, 0, bias=False),
@@ -31,7 +31,7 @@ class Generator(nn.Module):
               nn.Sigmoid()
               # state size. (nc) x 64 x 64
           )
-        elif image_size == 128:
+        elif image_dim == 128:
           self.main = nn.Sequential(
               # input is Z, going into a convolution
               nn.ConvTranspose2d( nz, ngf * 8, 4, 1, 0, bias=False),
@@ -67,11 +67,11 @@ class Generator(nn.Module):
         return self.main(input)
 
 class Discriminator(nn.Module):
-    def __init__(self, ngpu, ndf, nc, image_size):
+    def __init__(self, ngpu, ndf, nc, image_dim):
         super(Discriminator, self).__init__()
         self.ngpu = ngpu
         # Conv2d(in_channels, out_channels, kernel_size, stride, padding)
-        if image_size == 64:
+        if image_dim == 64:
           self.main = nn.Sequential(
               # input is (nc) x 64 x 64
               nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
@@ -92,7 +92,7 @@ class Discriminator(nn.Module):
               nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
               nn.Sigmoid()
           )
-        elif image_size == 128:
+        elif image_dim == 128:
           self.main = nn.Sequential(
                 # input is (nc) x 64 x 64
                 nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
