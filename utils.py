@@ -57,3 +57,5 @@ def plot_sample_grid(nsamples, netG, nz=100, fixed_noise=None, device="cuda:0", 
         images = netG(noise).cpu()
 
     make_image_grid(images=images, **kwargs)
+
+    return noise, images

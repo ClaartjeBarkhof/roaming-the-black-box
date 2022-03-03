@@ -164,4 +164,3 @@ def infer_mean_std_dataset(image_dir, n_samples=1000):
     print("mean_std shape", mean_std.shape)
 
     return mean_mean, mean_std
-
