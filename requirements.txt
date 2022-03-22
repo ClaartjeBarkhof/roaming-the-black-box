@@ -5,3 +5,4 @@ tensorflowjs
 imageio
 torch
 torchvision
+configargparse
