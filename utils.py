@@ -1,5 +1,7 @@
 import os
 
+import shutil
+
 import torch
 from torch.distributions import Normal
 from torchvision.utils import save_image
@@ -52,6 +54,8 @@ def make_image_grid(images, ncols, cell_size=1.5, un_normalize=False, set_idx_ti
         plt.suptitle(title)
     if save_as is not None:
         plt.savefig(save_as, dpi=300, bbox="tight_inches")
+
+    plt.show()
 
 
 def plot_sample_grid(nsamples, netG, nz=100, scale=1.0, fixed_noise=None, device="cuda:0", **kwargs):

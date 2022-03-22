@@ -35,7 +35,7 @@ def prepare_parser(raw_args=None):
     parser.add_argument('--batch_size', default=128, type=int, help="Train batch size")
 
     parser.add_argument('--data_dir', default="/content/drive/MyDrive/RtBB_experiment_code/Datasets/tile_dataset",
-                        type=int, help="Image dim (H, W)")
+                        type=str, help="Image dim (H, W)")
     parser.add_argument('--nworkers', default=2, type=int, help="Number of workers for data loading")
 
     parser.add_argument('--checkpoint_save_name', default="tile-gan.pt", type=str, help='Where to save checkpoints.')
@@ -46,7 +46,9 @@ def prepare_parser(raw_args=None):
 
     args = parser.parse_args(raw_args)
 
+    print('---- TRAIN ARGS ----')
     for k, v in vars(args).items():
         print(k, ":", v)
+    print('--------------------')
 
     return args

@@ -11,6 +11,7 @@ from GAN import Generator, Discriminator
 from dataset import ImageDataset
 from utils import make_image_grid
 
+
 # Custom weights initialization called on netG and netD
 def weights_init(m):
     classname = m.__class__.__name__
@@ -23,8 +24,7 @@ def weights_init(m):
 
 def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1, ndf=64, ngf=64, nc=3,
           image_dim=64, device="cuda:0", print_model=False, continue_train=False, continue_train_path="",
-          save_state_dict_path=None,
-          just_load_checkpoint=False):
+          save_state_dict_path=None, just_load_checkpoint=False):
 
     if continue_train:
         checkpoint = torch.load(continue_train_path)
@@ -97,6 +97,9 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
         optimizerG.load_state_dict(state_dict=checkpoint["optimizerG_state_dict"])
         optimizerD.load_state_dict(state_dict=checkpoint["optimizerD_state_dict"])
 
+        if just_load_checkpoint:
+            return netG, netD
+
     save_dict = None
 
     # Just to be sure
@@ -113,8 +116,7 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
         print(k, v)
     print("-" * 25)
 
-    if just_load_checkpoint:
-        return netG, netD
+
 
     if continue_train is None:
         print(f"Resuming training training loop [epoch {start_epoch} / iter {iters}]")
