@@ -3,7 +3,6 @@ import onnx
 from onnx2keras import onnx_to_keras
 import tensorflowjs as tfjs
 
-import numpy as np
 import torch
 import matplotlib.pyplot as plt
 

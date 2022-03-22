@@ -8,6 +8,8 @@ import torchvision.utils as vutils
 import matplotlib.pyplot as plt
 
 from GAN import Generator, Discriminator
+from dataset import ImageDataset
+from utils import make_image_grid
 
 # Custom weights initialization called on netG and netD
 def weights_init(m):
@@ -18,12 +20,13 @@ def weights_init(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
+
 def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1, ndf=64, ngf=64, nc=3,
-          image_dim=64,
-          device="cuda:0", print_model=False, continue_state_dict_path=None, save_state_dict_path=None,
+          image_dim=64, device="cuda:0", print_model=False, continue_train=False, continue_train_path="",
+          save_state_dict_path=None,
           just_load_checkpoint=False):
-    if continue_state_dict_path is not None:
-        checkpoint = torch.load(continue_state_dict_path)
+    if continue_train:
+        checkpoint = torch.load(continue_train_path)
         hp = checkpoint["hp"]
         nz = hp["nz"]
         lr = hp["lr"]
@@ -62,7 +65,7 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
     optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(beta1, 0.999))
     optimizerG = optim.Adam(netG.parameters(), lr=lr, betas=(beta1, 0.999))
 
-    if continue_state_dict_path is None:
+    if not continue_train:
         print("Initialising new weights.")
         # Apply the weights_init function to randomly initialize all weights
         #  to mean=0, stdev=0.02.
@@ -81,7 +84,7 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
 
     else:
         print("Loading weights from state dict.")
-        checkpoint = torch.load(continue_state_dict_path)
+        checkpoint = torch.load(continue_train_path)
         G_losses = checkpoint["G_losses"]
         D_losses = checkpoint["D_losses"]
         img_list = checkpoint["img_list"]
@@ -113,7 +116,7 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
     if just_load_checkpoint:
         return netG, netD
 
-    if continue_state_dict_path is None:
+    if continue_train is None:
         print(f"Resuming training training loop [epoch {start_epoch} / iter {iters}]")
     else:
         print(f"Resuming training training loop [epoch {start_epoch} / iter {iters}]")
@@ -218,5 +221,36 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
                              optimizerG_state_dict=optimizerG.state_dict(),
                              optimizerD_state_dict=optimizerD.state_dict())
             torch.save(save_dict, save_state_dict_path)
+
+    print("Done training! Returning save_dict...")
+
+    return save_dict
+
+
+def run_train(config, plot_data=True):
+    synth_dataset = ImageDataset(
+        data_dir=config.data_dir,
+        batch_size=config.batch_size,
+        image_dim=config.image_dim,
+        pin_memory=True if "cuda" in config.device else False,
+        num_workers=config.nworkers)
+
+    synth_dataset.setup()
+    train_loader = synth_dataset.train_dataloader()
+
+    if plot_data:
+        # Plot some training images
+        real_batch = next(iter(train_loader))
+        make_image_grid(real_batch[0][:64], ncols=8, cell_size=1.0, un_normalize=False, set_idx_title=False,
+                        border=False, wspace=0.0, hspace=0.0, save_as=None, title="Train data samples")
+
+    ngpu = 1 if "cuda" in config.device else 0
+    save_dict = train(train_loader, config.data_dir, lr=config.lr, nz=config.nz, num_epochs=config.num_epochs,
+                      beta1=config.adam_beta,
+                      ngpu=ngpu, ndf=config.ndf, ngf=config.ngf, nc=config.nchannels, image_dim=config.image_dim,
+                      device=config.device, print_model=False, continue_train=config.continue_train,
+                      continue_train_path=config.continue_train_path,
+                      save_state_dict_path=f"{config.output_dir}/{config.checkpoint_save_name}",
+                      just_load_checkpoint=False)
 
     return save_dict
