@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from tile_target_masks import make_target_images_and_loss_masks
+from .tile_target_masks import make_target_images_and_loss_masks
 
 class TileObjective(nn.Module):
     """

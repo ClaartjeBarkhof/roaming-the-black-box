@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from tile_objective import TileObjective
+from .tile_objective import TileObjective
 
 
 class TileOptimiser:

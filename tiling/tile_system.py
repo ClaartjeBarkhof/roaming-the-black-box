@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import random
 import torch
 
-from tile_optimisation import TileOptimiser
+from .tile_optimisation import TileOptimiser
 
 
 class TileGridSystem:

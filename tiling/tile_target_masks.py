@@ -6,7 +6,6 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from itertools import chain, combinations
 
-
 def make_target_images(images_to_match, matching_sides):
     """
     Implements the flipping of adjacent tiles that become targets for the new tile to optimise towards.
