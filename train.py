@@ -25,12 +25,12 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
           image_dim=64, device="cuda:0", print_model=False, continue_train=False, continue_train_path="",
           save_state_dict_path=None,
           just_load_checkpoint=False):
+
     if continue_train:
         checkpoint = torch.load(continue_train_path)
         hp = checkpoint["hp"]
         nz = hp["nz"]
         lr = hp["lr"]
-        data_dir = hp["data_dir"]
         beta1 = hp["beta1"]
         ndf = hp["ndf"]
         ngf = hp["ngf"]
