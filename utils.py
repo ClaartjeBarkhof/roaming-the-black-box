@@ -1,6 +1,13 @@
-import numpy as np
+import os
+
 import torch
+from torch.distributions import Normal
+from torchvision.utils import save_image
+
+import numpy as np
 import matplotlib.pyplot as plt
+
+import imageio
 
 
 def make_image_grid(images, ncols, cell_size=1.5, un_normalize=False, set_idx_title=False, border=False, wspace=0.0,
@@ -47,9 +54,10 @@ def make_image_grid(images, ncols, cell_size=1.5, un_normalize=False, set_idx_ti
         plt.savefig(save_as, dpi=300, bbox="tight_inches")
 
 
-def plot_sample_grid(nsamples, netG, nz=100, fixed_noise=None, device="cuda:0", **kwargs):
+def plot_sample_grid(nsamples, netG, nz=100, scale=1.0, fixed_noise=None, device="cuda:0", **kwargs):
     if fixed_noise is None:
-        noise = torch.randn((nsamples, nz, 1, 1)).to(device)
+      noise = Normal(loc=0.0, scale=scale).sample((nsamples, nz, 1, 1))
+      noise = noise.to(device)
     else:
         noise = fixed_noise
 
@@ -59,3 +67,32 @@ def plot_sample_grid(nsamples, netG, nz=100, fixed_noise=None, device="cuda:0", 
     make_image_grid(images=images, **kwargs)
 
     return noise, images
+
+
+def make_gif(im_batch, save_dir, save_name, reflect=False):
+    temp_dir = os.path.join(save_dir, "temp")
+    os.makedirs(temp_dir, exist_ok=True)
+
+    ims = im_batch.cpu()
+    for idx in range(len(ims)):
+        im_idx = ims[idx]
+        save_image(im_idx, f'{temp_dir}/img_{idx}.png')
+
+    images = []
+    filenames = os.listdir(temp_dir)
+
+    for filename in filenames:
+        images.append(imageio.imread(f"{temp_dir}/{filename}"))
+
+    if reflect:
+        for filename in reversed(filenames):
+            images.append(imageio.imread(f"{temp_dir}/{filename}"))
+
+    full_save_path = f"{save_dir}/{save_name}"
+    if not ".gif" in save_name:
+        full_save_path += ".gif"
+
+    shutil.rmtree(temp_dir)
+
+    print(f"Saving GIF at {full_save_path}")
+    imageio.mimsave(full_save_path, images)

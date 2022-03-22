@@ -1,5 +1,4 @@
 # Adapted from: https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
-
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -10,7 +9,6 @@ import matplotlib.pyplot as plt
 
 from GAN import Generator, Discriminator
 
-
 # Custom weights initialization called on netG and netD
 def weights_init(m):
     classname = m.__class__.__name__
@@ -20,23 +18,23 @@ def weights_init(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
-
-# Train loop
-def train(train_dataloader, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1, ndf=64, ngf=64, nc=3, image_dim=64,
-          device="cuda:0", print_model=False, continue_state_dict_path=None, save_state_dict_path=None):
-
-    if continue_state_dict_path is None:
+def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1, ndf=64, ngf=64, nc=3,
+          image_dim=64,
+          device="cuda:0", print_model=False, continue_state_dict_path=None, save_state_dict_path=None,
+          just_load_checkpoint=False):
+    if continue_state_dict_path is not None:
         checkpoint = torch.load(continue_state_dict_path)
         hp = checkpoint["hp"]
         nz = hp["nz"]
         lr = hp["lr"]
+        data_dir = hp["data_dir"]
         beta1 = hp["beta1"]
         ndf = hp["ndf"]
         ngf = hp["ngf"]
         nc = hp["nc"]
         image_dim = hp["image_dim"]
     else:
-        hp = dict(nz=nz, lr=lr, beta1=beta1, ndf=ndf, ngf=ngf, nc=nc, image_dim=image_dim)
+        hp = dict(nz=nz, lr=lr, beta1=beta1, ndf=ndf, ngf=ngf, nc=nc, image_dim=image_dim, data_dir=data_dir)
 
     # Initialize BCELoss function
     criterion = nn.BCELoss()
@@ -65,6 +63,7 @@ def train(train_dataloader, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1
     optimizerG = optim.Adam(netG.parameters(), lr=lr, betas=(beta1, 0.999))
 
     if continue_state_dict_path is None:
+        print("Initialising new weights.")
         # Apply the weights_init function to randomly initialize all weights
         #  to mean=0, stdev=0.02.
         netG.apply(weights_init)
@@ -81,6 +80,7 @@ def train(train_dataloader, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1
         start_epoch = 0
 
     else:
+        print("Loading weights from state dict.")
         checkpoint = torch.load(continue_state_dict_path)
         G_losses = checkpoint["G_losses"]
         D_losses = checkpoint["D_losses"]
@@ -94,6 +94,8 @@ def train(train_dataloader, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1
         optimizerG.load_state_dict(state_dict=checkpoint["optimizerG_state_dict"])
         optimizerD.load_state_dict(state_dict=checkpoint["optimizerD_state_dict"])
 
+    save_dict = None
+
     # Just to be sure
     netG.train()
     for param in netG.parameters():
@@ -103,9 +105,21 @@ def train(train_dataloader, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1
     for param in netD.parameters():
         param.requires_grad = True
 
-    print("Starting (or resuming) Training Loop...")
+    print("-" * 10, " HP ", "-" * 10)
+    for k, v in hp.items():
+        print(k, v)
+    print("-" * 25)
+
+    if just_load_checkpoint:
+        return netG, netD
+
+    if continue_state_dict_path is None:
+        print(f"Resuming training training loop [epoch {start_epoch} / iter {iters}]")
+    else:
+        print(f"Resuming training training loop [epoch {start_epoch} / iter {iters}]")
+
     # For each epoch
-    for epoch in range(start_epoch, num_epochs+start_epoch):
+    for epoch in range(start_epoch, num_epochs + start_epoch):
         # For each batch in the dataloader
         i = 0
         for i, data in enumerate(train_dataloader, 0):
@@ -175,29 +189,34 @@ def train(train_dataloader, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1
             G_losses.append(errG.item())
             D_losses.append(errD.item())
 
-            # Check how the generator is doing by saving G's output on fixed_noise
-            if (iters % 500 == 0) or ((epoch == num_epochs - 1) and (i == len(train_dataloader) - 1)):
-                with torch.no_grad():
-                    fake = netG(fixed_noise).detach().cpu()
-                img = vutils.make_grid(fake, padding=2)
-                img_list.append(img)  # , normalize=True
-
-                # Plot
-                img = img.permute(1, 2, 0)
-                # img = (img + 1.0) / 2.0
-                plt.imshow(img, vmin=0.0, vmax=1.0)
-                plt.title(f"Epoch {epoch} | iter {i} | total iter {iters} ")
-                plt.axis("off")
-                plt.show()
-
             iters += 1
+
+        # -------------------------------------------------------------
+        # END OF EPOCH
+
+        # Check how the generator is doing by saving G's output on fixed_noise
+        with torch.no_grad():
+            fake = netG(fixed_noise).detach().cpu()
+        img = vutils.make_grid(fake, padding=2)
+        img_list.append(img)  # , normalize=True
+
+        # Plot
+        img = img.permute(1, 2, 0)
+        # img = (img + 1.0) / 2.0
+        plt.imshow(img, vmin=0.0, vmax=1.0)
+        plt.title(f"Epoch {epoch} | iter {i} | total iter {iters} ")
+        plt.axis("off")
+        plt.show()
 
         if save_state_dict_path is not None:
             print(f"End of epoch {epoch} - Saving state and info in {save_state_dict_path}")
             save_dict = dict(G_losses=G_losses, D_losses=D_losses, hp=hp,
+                             img_list=img_list,
                              epoch=epoch, step=i, iters=iters,
                              netG_state_dict=netG.state_dict(),
                              netD_state_dict=netD.state_dict(),
                              optimizerG_state_dict=optimizerG.state_dict(),
                              optimizerD_state_dict=optimizerD.state_dict())
             torch.save(save_dict, save_state_dict_path)
+
+    return save_dict
