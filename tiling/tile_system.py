@@ -26,6 +26,7 @@ class TileGridSystem:
         self.optimisations = dict()
 
         self.tile_optimiser = TileOptimiser(lr=lr,
+                                            netG=netG,
                                             nz=nz,
                                             num_steps=num_steps,
                                             latent_range=latent_range,
