@@ -1,4 +1,5 @@
 # Adapted from: https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
+import os
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -38,6 +39,14 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
         image_dim = hp["image_dim"]
     else:
         hp = dict(nz=nz, lr=lr, beta1=beta1, ndf=ndf, ngf=ngf, nc=nc, image_dim=image_dim, data_dir=data_dir)
+
+    if save_state_dict_path is not None:
+        if ".pt" in save_state_dict_path:
+            save_state_dict_path = save_state_dict_path.replace(".pt", "")
+        while os.path.exists(save_state_dict_path):
+            save_state_dict_path += "-1"
+        print(f"Saving results to: {save_state_dict_path}")
+        os.makedirs(save_state_dict_path, exist_ok=True)
 
     # Initialize BCELoss function
     criterion = nn.BCELoss()
@@ -215,6 +224,7 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
 
         if save_state_dict_path is not None:
             print(f"End of epoch {epoch} - Saving state and info in {save_state_dict_path}")
+            save_state_dict_path_current = save_state_dict_path + f"/epoch-{epoch}.pt"
             save_dict = dict(G_losses=G_losses, D_losses=D_losses, hp=hp,
                              img_list=img_list,
                              epoch=epoch, step=i, iters=iters,
@@ -222,7 +232,7 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
                              netD_state_dict=netD.state_dict(),
                              optimizerG_state_dict=optimizerG.state_dict(),
                              optimizerD_state_dict=optimizerD.state_dict())
-            torch.save(save_dict, save_state_dict_path)
+            torch.save(save_dict, save_state_dict_path_current)
 
     print("Done training! Returning save_dict...")
 
