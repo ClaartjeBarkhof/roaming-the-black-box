@@ -69,13 +69,7 @@ class ImageDataset():
         self.val_dataset = None
 
     def setup(self, stage: Optional[str] = None) -> None:
-        if self.dataset_name in ["tile_dataset", "tile_no_round_dataset"]:
-            print("No normalisation!")
-            self.transforms = transforms.Compose([transforms.RandomHorizontalFlip(),
-                                                  transforms.Resize(self.image_dim),
-                                                  transforms.ToTensor(),
-                                                  ])  # transforms.Normalize(mean_mean, mean_std)
-        elif self.dataset_name in ["synthetic_simple_bw" "synthetic_simple_bw_filled"]:
+        if self.dataset_name in ["synthetic_simple_bw" "synthetic_simple_bw_filled"]:
             print("With normalisation!")
             self.transforms = transforms.Compose([transforms.Grayscale(num_output_channels=1),
                                                     transforms.RandomHorizontalFlip(),
@@ -94,8 +88,11 @@ class ImageDataset():
                                                   transforms.Normalize((0.5330, 0.5264, 0.5296),
                                                                         (0.3773, 0.3776, 0.3732))])
         else:
-            print(f"No transforms for {self.dataset_name}")
-            raise NotImplementedError
+            print("No normalisation! Using standard transforms only: RandomHorizontalFlip, Resize & ToTensor.")
+            self.transforms = transforms.Compose([transforms.RandomHorizontalFlip(),
+                                                  transforms.Resize(self.image_dim),
+                                                  transforms.ToTensor(),
+                                                  ])  # transforms.Normalize(mean_mean, mean_std)
 
         self.train_dataset = SyntheticDataset(
             self.data_dir,
