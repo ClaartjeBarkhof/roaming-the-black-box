@@ -130,4 +130,5 @@ dmypy.json
 
 # Claartje:
 .idea/
-output_dir/
+output_dir
+checkpoints
