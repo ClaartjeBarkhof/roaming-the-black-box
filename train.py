@@ -12,7 +12,6 @@ from GAN import Generator, Discriminator
 from dataset import ImageDataset
 from utils import make_image_grid
 
-
 # Custom weights initialization called on netG and netD
 def weights_init(m):
     classname = m.__class__.__name__
@@ -22,13 +21,26 @@ def weights_init(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
+def load_netG_for_eval(checkpoint_path, device="cuda:0"):
+    # Load checkpoint
+    checkpoint = torch.load(checkpoint_path, map_location=torch.device(device))
+
+    # Create the generator
+    hp = checkpoint["hp"]
+    netG = Generator(ngpu=0 if device == "cpu" else 1, ngf=hp["ngf"], nz=hp["nz"], image_dim=hp["image_dim"], nc=hp["nc"]).to(device)
+
+    # Load weights and set in evaluation mode.
+    netG.load_state_dict(state_dict=checkpoint["netG_state_dict"])
+    netG.eval()
+
+    return netG, hp
 
 def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0.5, ngpu=1, ndf=64, ngf=64, nc=3,
           image_dim=64, device="cuda:0", print_model=False, continue_train=False, continue_train_path="",
           save_state_dict_path=None, just_load_checkpoint=False):
 
     if continue_train:
-        checkpoint = torch.load(continue_train_path)
+        checkpoint = torch.load(continue_train_path, map_location=torch.device(device))
         hp = checkpoint["hp"]
         nz = hp["nz"]
         lr = hp["lr"]
@@ -93,7 +105,8 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
 
     else:
         print("Loading weights from state dict.")
-        checkpoint = torch.load(continue_train_path)
+        print("DEVICE =", device)
+        checkpoint = torch.load(continue_train_path, map_location=torch.device(device))
         G_losses = checkpoint["G_losses"]
         D_losses = checkpoint["D_losses"]
         img_list = checkpoint["img_list"]
@@ -107,7 +120,7 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
         optimizerD.load_state_dict(state_dict=checkpoint["optimizerD_state_dict"])
 
         if just_load_checkpoint:
-            return netG, netD
+            return netG.to(device), netD.to(device)
 
     save_dict = None
 
@@ -124,8 +137,6 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
     for k, v in hp.items():
         print(k, v)
     print("-" * 25)
-
-
 
     if continue_train is None:
         print(f"Resuming training training loop [epoch {start_epoch} / iter {iters}]")
@@ -237,7 +248,6 @@ def train(train_dataloader, data_dir, lr=0.0002, nz=100, num_epochs=200, beta1=0
     print("Done training! Returning save_dict...")
 
     return save_dict
-
 
 def run_train(config, plot_data=True):
     synth_dataset = ImageDataset(
