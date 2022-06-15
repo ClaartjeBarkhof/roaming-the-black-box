@@ -9,7 +9,6 @@ from torchvision import transforms
 import numpy as np
 from PIL import Image
 
-
 class SyntheticDataset(Dataset):
     def __init__(self,
                  data_dir: str,

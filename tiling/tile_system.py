@@ -109,7 +109,6 @@ class TileGridSystem:
         self.tile_order.append(idx)
         self.optimisations[idx] = None
         self.imgs[idx] = r_img[0].detach().cpu()
-        print("sample random self.imgs[idx] shape", self.imgs[idx].shape)
 
         if plot_grid_after:
             self.plot_grid()
@@ -168,7 +167,6 @@ class TileGridSystem:
                 for idx in expand_idxs:
                     if idx not in exist_idxs:
                         non_exist_expand_idx.append(idx)
-                print("non_exist_expand_idx", non_exist_expand_idx)
                 # if one is found: return it as a valid expansion idx direction
                 if len(non_exist_expand_idx) > 0:
                     random_expand_idx = random.choice(non_exist_expand_idx)
@@ -205,7 +203,7 @@ class TileGridSystem:
         # Otherwise optimise towards a new, fitting tile!
         else:
             # constraint_imgs, constraint_sides
-            print("constraint_sides", constraint_sides)
+            print("Constraining sides", constraint_sides)
             optim_imgs = self.tile_optimiser.optimise(constraint_imgs=[constraint_imgs],
                                                       constraint_sides=[constraint_sides],
                                                       opposite_transform=opposite_transform,
